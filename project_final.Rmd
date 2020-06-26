@@ -1,0 +1,330 @@
+---
+title: "R Notebook"
+output: html_document
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*. 
+dtas
+```{r}
+#Reading data from csv file and storing in datas
+datas<- read.table('application_train.csv',header=T,sep=',')
+```
+
+```{r}
+#exhibiting joinig two data frames and applying aggregate function after grouping
+
+myvarsj<-c("SK_ID_CURR","TARGET")
+newdataj1<-datas[myvarsj]
+```
+
+```{r}
+datas1<- read.table('bureau.csv',header=T,sep=',')
+myvarsj2<-c("SK_ID_CURR","SK_ID_BUREAU","AMT_CREDIT_SUM")
+newdataj2<-datas1[myvarsj2]
+```
+
+```{r}
+datamerge1 <-merge(newdataj1,newdataj2,by="SK_ID_CURR")
+```
+
+```{r}
+install.packages("dplyr",repos = "http://cran.us.r-project.org")
+library("dplyr")
+```
+
+```{r}
+result<-datamerge1 %>%
+group_by(SK_ID_CURR) %>%
+summarize(total=sum(AMT_CREDIT_SUM,na.rm=TRUE),
+count=n())
+
+```
+
+Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
+```{r}
+myvars<-c("CNT_CHILDREN","AMT_INCOME_TOTAL","AMT_CREDIT","AMT_ANNUITY","NAME_CONTRACT_TYPE","CODE_GENDER","FLAG_OWN_REALTY","TARGET")
+newdata<-datas[myvars]
+summary(newdata)
+```
+
+When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Ctrl+Shift+K* to preview the HTML file).
+```{r}
+# just removing na's as its just 12 , the number is quite small compared to dataset
+ndata<-na.exclude (newdata)
+summary(ndata)
+
+```
+
+The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.
+```{r}
+# Exploring the data and preprocessing
+boxplot(ndata$AMT_INCOME_TOTAL)
+# cleary the data has outliers , this can affect the analysis. The regression model will be affected by the outliers.
+```
+
+```{r}
+#removing the outlier from AMT_INCOME_TOTAL variable
+outl<-boxplot(ndata$AMT_INCOME_TOTAL)$out
+ndata1<-ndata[-which(ndata$AMT_INCOME_TOTAL %in% outl),]
+summary(ndata1)
+```
+```{r}
+#remove outlier from AMT_ANNUITY
+outlier_annuity<-boxplot(ndata1$AMT_ANNUITY)$out
+newdata1<-ndata1[-which(ndata1$AMT_ANNUITY %in% outlier_annuity),]
+summary(newdata1)
+
+```
+
+```{r}
+#remove outlier from children
+outlier_children<-boxplot(newdata1$CNT_CHILDREN)$out
+newdata2<-newdata1[-which(newdata1$CNT_CHILDREN %in% outlier_children),]
+summary(newdata2)
+```
+
+```{r}
+#remove outlier from AMT_CREDIT
+outlier_credit<-boxplot(newdata2$AMT_CREDIT)$out
+newdata3<-newdata2[-which(newdata2$AMT_CREDIT %in% outlier_credit),]
+summary(newdata3)
+
+```
+
+```{r}
+# CONVERTING THE target variable from int to Factor
+newdata3$TARGET[newdata3$TARGET == 0] <- 'Good'
+newdata3$TARGET[newdata3$TARGET == 1] <- 'bad'
+newdata3$TARGET <- factor(newdata3$TARGET)
+str(newdata3)
+```
+
+```{r}
+#KNN MODEL
+# for purpose of knn I have selected all numeric variables
+myvarsk<-c("AMT_INCOME_TOTAL","AMT_CREDIT","AMT_ANNUITY","TARGET")
+knndata<-newdata3[myvarsk]
+set.seed(222)
+knndata1<-knndata[sample(nrow(knndata),10000),]
+str(knndata1)
+summary(knndata1)
+```
+```{r}
+#scaling
+normalize <- function (X){
+  return ((X-min(X)))/((max(X)- min(X)))
+}
+knndatanor<-as.data.frame(lapply(knndata1[,c(1,2,3)],normalize))
+summary(knndatanor)
+str(knndatanor)
+```
+```{r}
+#setting up input for knn
+knndatanor_train<-knndatanor[1:7999,]
+knndatanor_test<-knndatanor[8000:10000,]
+knndatanor_train_target<-knndata1[1:7999,4]
+knndatanor_test_target<-knndata1[8000:10000,4]
+```
+```{r}
+require(class)
+knnmodel<-knn(train=knndatanor_train, test=knndatanor_test, cl=knndatanor_train_target, k=151)
+```
+```{r}
+# NAIVEBAYES MODEL
+install.packages("naivebayes",repos = "http://cran.us.r-project.org")
+install.packages("ggplot2",repos = "http://cran.us.r-project.org")
+install.packages("psych",repos = "http://cran.us.r-project.org")
+```
+```{r}
+library(psych)
+library(naivebayes)
+
+```
+```{r}
+# variables
+myvarsn<-c("AMT_INCOME_TOTAL","AMT_CREDIT","AMT_ANNUITY","TARGET","FLAG_OWN_REALTY")
+naivedata<-newdata3[myvarsn]
+set.seed(222)
+naivedata1<-naivedata[sample(nrow(naivedata),10000),]
+str(naivedata1)
+summary(naivedata1)
+```
+```{r}
+#checking correlation among independent varaibles
+pairs.panels(naivedata1[1:3])
+#it can be seen that very correlation excist between AMT_CREDIT AND AMT_ANNUITY known as multicollinearity, So it would be recommended to remove any of the variable to reduce multicollinearity.
+```
+```{r}
+pairs.panels(naivedata1[1:2])
+```
+```{r}
+set.seed(1234)
+set.seed(1234)
+index1 <- sample(2, nrow(naivedata1), replace = T, prob = c(0.8, 0.2))
+train_n <- naivedata1[index1==1,]
+test_n <- naivedata1[index1==2,]
+```
+```{r}
+# Naive Bayes Model
+model_naive <- naive_bayes(TARGET ~ ., data = train_n, usekernel = T)
+model_naive
+
+plot(model_naive)
+```
+```{r}
+#Logistic Regression
+logicdata<-newdata3
+# exploring data for outliers and missisg values(na's)
+str(logicdata)
+summary(logicdata)
+```
+
+```{r}
+# Partition data
+set.seed(1234)
+index <- sample(2, nrow(logicdata), replace = T, prob = c(0.8, 0.2))
+train <- logicdata[index==1,]
+test <- logicdata[index==2,]
+```
+```{r} 
+# Logistic regression model
+logicmodel <- glm(TARGET ~ CNT_CHILDREN + AMT_INCOME_TOTAL + AMT_CREDIT + AMT_ANNUITY + NAME_CONTRACT_TYPE + CODE_GENDER +FLAG_OWN_REALTY,data = train, family = 'binomial')
+summary(logicmodel)
+```
+```{r}
+# as per summary of model variable CODE_GENDER and FLAG_OWN_REALTY are not significant
+# tried removing variable with higher p value
+logicmodel1 <- glm(TARGET ~ CNT_CHILDREN + AMT_INCOME_TOTAL + AMT_CREDIT + AMT_ANNUITY + NAME_CONTRACT_TYPE + FLAG_OWN_REALTY,data = train, family = 'binomial')
+summary(logicmodel1)
+# all variables are significant, we have very good model
+#the variable CNT_CHILDREN and AMT_ANNUITY negatively affects the outcome.
+#the variable AMT_INCOME_TOTAL, AMT_CREDIT,NAME_CONTRACT_TYPE, FLAG_OWN_REALTY positively affects the outcome.So as the positive values increase the chance of seleting good customer is more
+```
+
+```{r}
+# Prediction
+predict1 <- predict(logicmodel1, train, type = 'response')
+head(predict1)
+```
+```{r}
+install.packages("effects",repos = "http://cran.us.r-project.org")
+library(effects)
+plot(allEffects(logicmodel1))
+```
+```{r}
+# Goodness-of-fit test
+with(logicmodel1, pchisq(null.deviance - deviance, df.null-df.residual, lower.tail = F))
+
+# value suggest that p value is very less than .005. Thus we can conclude that model has good fit and good model
+```
+
+```{r}
+#LINEAR REGRESSION
+lindata<-newdata3
+linearmodel <-  lm(AMT_ANNUITY ~ CNT_CHILDREN + AMT_INCOME_TOTAL + AMT_CREDIT + NAME_CONTRACT_TYPE + FLAG_OWN_REALTY,data = lindata)
+summary(linearmodel)
+# The model shows that all variables are valid, as all p values are less that 0.05
+# The model has p value , which is less than 0.05 and Adjusted R-squared:  0.6318.
+# This model explains 63.18% of amount annuity using five variables considered in this model 
+# Therecan be other factors which also affect the dependent variable, Which is not accounted
+```
+```{r}
+install.packages("effects",repos = "http://cran.us.r-project.org")
+library(effects)
+plot(allEffects(linearmodel))
+```
+```{r}
+str(newdata3)
+# has mix of numeric and categorical values
+```
+
+```{r}
+#for hierarical clustering, selecting only numeric variables, as categorical data require two step clustering
+myclusvars<-c("CNT_CHILDREN","AMT_INCOME_TOTAL","AMT_CREDIT","AMT_ANNUITY")
+clusdata<-newdata3[myclusvars]
+clusdata1<-newdata3[myclusvars]
+summary(clusdata)
+str(clusdata)
+```
+
+```{r}
+#normalization for normaling the variables, so that all variables have level playing field
+m<-apply(clusdata,2,mean)
+sd<-apply(clusdata,2,sd)
+clusdata<-scale(clusdata,m,sd)
+```
+```{r}
+# As recommended , for clear dendrogram, I have selected 30 datapoints for h clustering.
+#using runif, we will get number 0 and 1 , .0001. which is .01% od datasets
+set.seed(222)
+mydata<-clusdata[sample(nrow(clusdata),30),]
+```
+```{r}
+distance<-dist(mydata,method="euclidean")
+distance
+```
+```{r}
+# cluster dendrogram, The "ward" method has been renamed to "ward.D"; note new "ward.D2"
+hc<-hclust(distance,method="ward.D2")
+plot(hc, cex = 0.6, hang = -1, main = "Dendrogram")
+rect.hclust(hc,k=5, border = 2:5)
+```
+```{r}
+# the exact number of groups using cutree
+groups <- cutree(hc,k=5)
+# Number of members in each cluster
+table(groups)
+```
+
+```{r}
+#install.packages("tidyverse")  # data manipulation
+#install.packages("cluster")    # clustering algorithms
+install.packages("factoextra",repos = "http://cran.us.r-project.org")# clustering visualization
+#install.packages("dendextend") # for comparing two dendrograms
+```
+
+```{r}
+library(factoextra)
+```
+
+```{r}
+fviz_cluster(list(data = mydata, cluster = groups))
+```
+
+```{r}
+#Association minning 
+install.packages("arules",repos = "http://cran.us.r-project.org")
+library(arules)
+```
+```{r}
+#associaton mining rule
+myavars<-c("TARGET","NAME_CONTRACT_TYPE" , "CODE_GENDER" , "FLAG_OWN_REALTY")
+adata<-newdata3[myavars]
+summary(adata)
+str(adata)
+```
+```{r}
+rules<- apriori(adata)
+```
+```{r}
+inspect(rules)
+```
+```{r}
+#we can create intersting rules
+#The rule, rules1 is trying to find association between target =good(no difficulty in paying loan)
+# rule NUMBER 2 states that 
+#if NAME_CONTRACT_TYPE=Cash loans,CODE_GENDER=M,FLAG_OWN_REALTY=Y then target= Good
+#This associations can help to unearth all links and has lot of relevance in many fields. for example finding the good customer.
+
+rules1<-apriori(adata, parameter = list(minlen=4, maxlen=4, conf=0.70),appearance = list(rhs=c("TARGET=Good"), default="lhs"))
+inspect(rules1)
+```
+
+```{r}
+#visualizing rules
+install.packages("arulesViz",repos = "http://cran.us.r-project.org")
+library(arulesViz)
+plot(rules1, method="graph")
+```
