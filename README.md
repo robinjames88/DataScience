@@ -4,8 +4,6 @@ The repo shows the process of integrating data of different types,demonstrate pr
 
 Website robinjames88.github.io/datascience
 
-
 Dataset: Kaggle Dataset
 Dataset Description: Home Credit Default Risk
-
 Aim : Predict how capable each applicant is of repaying a loan.
