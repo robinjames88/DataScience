@@ -3,7 +3,7 @@
   The repo shows the process of integrating data of different types,demonstrate programming abilities to build solutions for exploratory data analysis using visualisation and       clustering techniques and communicate effectively with stakeholders the outcomes of a data analysis.
 
 # Website
- You can visit the website here[robinjames88.github.io/DataScience](robinjames88.github.io/DataScience)
+ You can visit this [website] here : (robinjames88.github.io/DataScience)
 
 # Dataset: 
   Kaggle Dataset
