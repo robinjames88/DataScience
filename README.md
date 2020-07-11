@@ -17,4 +17,4 @@
 
 # Website
 
-  You can visit this (robinjames88.github.io/DataScience)[https://robinjames88.github.io/DataScience]
+  You can visit this R notebook here : https://robinjames88.github.io/DataScience
